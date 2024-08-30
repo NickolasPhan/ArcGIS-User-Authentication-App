@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no" />
+  <title>ArcGIS Maps SDK Login</title>
+
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.30/esri/themes/light/main.css">
+  <script src="https://js.arcgis.com/4.30/"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+  <style>
+    html,
+    body {
+      font-size: 150%;
+      margin: 10vh 10vw;
+    }
+  </style>
+
+  <script>
+
+    require([
+      "esri/portal/Portal",
+      "esri/identity/OAuthInfo",
+      "esri/identity/IdentityManager"
+    ], function (Portal, OAuthInfo, esriId) {
+
+      const info = new OAuthInfo({
+        appId: "raIlJpkSMoStBPOs",
+        popup: false // the default 
+      });
+      esriId.registerOAuthInfos([info]);
+
+      esriId
+        .checkSignInStatus(info.portalUrl + "/sharing")
+        .then(() => {
+          handleSignedIn();
+        })
+
+        .catch(() => {
+          handleSignedOut();
+
+        });
+
+      document.getElementById("sign-in").addEventListener("click", function () {
+        esriId.getCredential(info.portalUrl + "/sharing");
+      });
+
+      document.getElementById("sign-out").addEventListener("click", function () {
+        esriId.destroyCredentials();
+        window.location.reload();
+      });
+
+      function handleSignedIn() {
+
+        const portal = new Portal();
+        portal.load().then(() => {
+
+          $.ajax({
+              type: 'POST',
+              data: {refreshToken: portal.credential._oAuthCred.refreshToken},
+              dataType: 'application/json',
+              url: 'http://localhost:8000'
+          }); // end ajax.POST
+
+          const results = { name: portal.user.fullName, username: portal.user.username };
+          document.getElementById("results").innerText = JSON.stringify(results, null, 2);
+        });
+
+      }
+
+      function handleSignedOut() {
+        document.getElementById("results").innerText = 'Signed Out'
+      }
+
+    });
+  </script>
+
+</head>
+
+<body>
+
+  <h1>Log in to ArcGIS</h1>
+  <button id="sign-in" class="btn btn-primary">Sign In</button>
+  <button id="sign-out" class="btn btn-primary">Sign Out</button>
+  <pre><code id="status"></code></pre>
+  <pre><code id="results"></code></pre>
+
+</body>
+
+</html>
+
