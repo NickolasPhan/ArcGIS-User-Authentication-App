@@ -38,9 +38,9 @@
         .checkSignInStatus(info.portalUrl + "/sharing")
         .then(() => {
           handleSignedIn();
-        })
-
-        .catch(() => {
+        }).then(() => {
+          document.getElementById('copyClipboard').style.display = 'block';
+        }).catch(() => {
           handleSignedOut();
 
         });
@@ -54,20 +54,52 @@
         window.location.reload();
       });
 
+      document.getElementById('copyClipboard').addEventListener('click', () => {
+        let resultText = JSON.parse(document.getElementById("results").innerText);
+        let access_token = resultText["Access Token"];
+        navigator.clipboard.writeText(access_token);
+
+        document.getElementById('copyClipboard').innerHTML = 'Copied to clipboard!'
+        setTimeout(() => {
+          document.getElementById('copyClipboard').innerHTML = 'Copy Access Token';
+        }, 1000);
+
+        // console.log(access_token);
+      });
+
       function handleSignedIn() {
 
         const portal = new Portal();
         portal.load().then(() => {
 
           $.ajax({
-              type: 'POST',
-              data: {refreshToken: portal.credential._oAuthCred.refreshToken},
-              dataType: 'application/json',
-              url: 'http://localhost:8000'
-          }); // end ajax.POST
+                type: 'POST',
+                data: {refreshToken: portal.credential._oAuthCred.refreshToken},
+                dataType: 'application/json',
+                url: 'http://localhost:8000',
+                error: res => {
+                  response = JSON.parse(res.responseText);
+                  access_token = response["Access Token"];
+                  
 
-          const results = { name: portal.user.fullName, username: portal.user.username };
-          document.getElementById("results").innerText = JSON.stringify(results, null, 2);
+                  var timeRegex = /T(.*?)\./;
+                  var time = new Date();
+                  var currentTime = time.toISOString().match(timeRegex)[1];
+                  var expTime = new Date();
+                  expTime.setMinutes(time.getMinutes() + 30);
+                  var expirationTime = expTime.toISOString().match(timeRegex)[1];
+
+                  const results = {
+                    Name: portal.user.fullName,
+                    Username: portal.user.username,
+                    "Access Token": access_token,
+                    "Access Token created at": currentTime,
+                    "Access Token expires at": expirationTime
+                  };
+                  document.getElementById("results").innerText = JSON.stringify(results, null, 2);
+
+                }
+          }) // end ajax.POST
         });
 
       }
@@ -86,6 +118,8 @@
   <h1>Log in to ArcGIS</h1>
   <button id="sign-in" class="btn btn-primary">Sign In</button>
   <button id="sign-out" class="btn btn-primary">Sign Out</button>
+  </br>
+  <button id="copyClipboard" style="display: none;">Copy Access Token</button>
   <pre><code id="status"></code></pre>
   <pre><code id="results"></code></pre>
 
